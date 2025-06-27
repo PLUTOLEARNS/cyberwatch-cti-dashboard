@@ -18,7 +18,7 @@ Replace `YOUR_USERNAME` with your actual GitHub username:
 
 ```bash
 cd "c:\Users\isoum\Downloads\CyberWatch\cti-dashboard"
-git remote add origin https://github.com/YOUR_USERNAME/cyberwatch-cti-dashboard.git
+git remote add origin https://github.com/PLUTOLEARNS/cyberwatch-cti-dashboard.git
 git branch -M main
 git push -u origin main
 ```
