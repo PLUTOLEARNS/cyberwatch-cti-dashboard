@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}CTI Dashboard - Threat Intelligence Overview{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="display-6"><i class="fas fa-chart-line"></i> Threat Intelligence Dashboard</h1>
+        <p class="lead">Real-time cyber threat intelligence metrics and visualization</p>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card glass border-left-primary shadow h-100 py-2 glow-border">
+            <div class="card-body">                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1 neon-accent">
+                            Total Threats (Last 30 Days)</div>
+                        <div class="h5 mb-0 font-weight-bold" id="total-threats-container">
+                            <span id="total-threats">--</span>
+                            <i class="fas fa-info-circle ms-1 small" data-bs-toggle="tooltip" 
+                               title="Total number of unique threats detected in the past 30 days"></i>
+                        </div>
+                        <div class="small mt-2">Last updated: <span id="last-updated">--</span></div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-virus fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card glass border-left-success shadow h-100 py-2 glow-border">
+            <div class="card-body">                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1 neon-accent">
+                            Average Threat Score</div>
+                        <div class="h5 mb-0 font-weight-bold">
+                            <span id="avg-threat-score">--</span>
+                            <span id="severity-level" class="ms-2">--</span>
+                        </div>
+                        <div class="small mt-2" data-bs-toggle="tooltip" 
+                           title="Weighted average severity of detected threats">
+                            <i class="fas fa-info-circle"></i> Severity level based on threat intelligence
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-tachometer-alt fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card glass border-left-info shadow h-100 py-2 glow-border">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Active Malware Families</div>
+                        <div class="h5 mb-0 font-weight-bold" id="malware-families">--</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-bug fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card glass border-left-warning shadow h-100 py-2 glow-border">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1 neon-accent">
+                            High Risk Indicators</div>
+                        <div class="h5 mb-0 font-weight-bold" id="high-risk-count">--</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <div class="col-xl-8 col-lg-7">
+        <div class="card glass shadow mb-4 glow-border">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold neon-accent"><i class="fas fa-chart-area"></i> Threat Trends (Last 30 Days)</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="threatTrendsChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-lg-5">
+        <div class="card glass shadow mb-4 glow-border">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold neon-accent"><i class="fas fa-globe"></i> Geographic Distribution</h6>
+            </div>
+            <div class="card-body">
+                <div id="geoDistributionChart" class="geo-chart"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row 2 -->
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card glass shadow mb-4 glow-border">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold neon-accent"><i class="fas fa-bug"></i> Top Malware Families</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="malwareFamiliesChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card glass shadow mb-4 glow-border">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold neon-accent"><i class="fas fa-calendar-alt"></i> IOC Timeline</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="iocTimelineChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

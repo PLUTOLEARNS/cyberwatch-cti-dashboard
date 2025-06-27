@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block title %}CTI Dashboard - Threat Lookup{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="display-6"><i class="fas fa-search"></i> Threat Intelligence Lookup</h1>
+        <p class="lead">Analyze IP addresses, domains, URLs, and file hashes for threat intelligence</p>
+    </div>
+</div>
+
+<!-- Lookup Form -->
+<div class="row mb-4">
+    <div class="col-lg-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold"><i class="fas fa-search"></i> Indicator Lookup</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="/lookup">
+                    <div class="mb-3">
+                        <label for="indicator" class="form-label">Enter IP Address, Domain, URL, or File Hash:</label>
+                        <input type="text" class="form-control" id="indicator" name="indicator" 
+                               placeholder="Example: 8.8.8.8, example.com, https://example.com, or 44d88612fea8a8f36de82e1278abb02f" required>
+                        <small class="form-text text-muted">Supported indicator types: IP addresses, domains, URLs, and file hashes (MD5, SHA-1, SHA-256)</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Lookup</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if indicator %}
+<!-- Results Section -->
+<div class="row">
+    <div class="col">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold">
+                    Results for: {{ indicator }}
+                    <span class="badge {% if threat_score >= 75 %}bg-danger{% elif threat_score >= 50 %}bg-warning{% elif threat_score >= 25 %}bg-info{% else %}bg-success{% endif %}">
+                        Threat Score: {{ threat_score }}/100
+                    </span>
+                </h6>
+                <div>
+                    <span class="badge bg-secondary">{{ indicator_type|upper }}</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="resultTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary" type="button" role="tab">Summary</button>
+                    </li>
+                    {% if results.virustotal %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="virustotal-tab" data-bs-toggle="tab" data-bs-target="#virustotal" type="button" role="tab">VirusTotal</button>
+                    </li>
+                    {% endif %}
+                    {% if results.abuseipdb %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="abuseipdb-tab" data-bs-toggle="tab" data-bs-target="#abuseipdb" type="button" role="tab">AbuseIPDB</button>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab">History</button>
+                    </li>
+                </ul>
+                
+                <!-- Tab Content -->
+                <div class="tab-content p-3" id="resultTabsContent">
+                    <!-- Summary Tab -->
+                    <div class="tab-pane fade show active" id="summary" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="alert {% if threat_score >= 75 %}alert-danger{% elif threat_score >= 50 %}alert-warning{% elif threat_score >= 25 %}alert-info{% else %}alert-success{% endif %}">
+                                    <h4 class="alert-heading">Threat Assessment</h4>
+                                    <p>
+                                        {% if threat_score >= 75 %}
+                                            <strong>High Risk:</strong> This indicator is highly likely to be malicious.
+                                        {% elif threat_score >= 50 %}
+                                            <strong>Moderate Risk:</strong> This indicator shows suspicious behavior.
+                                        {% elif threat_score >= 25 %}
+                                            <strong>Low Risk:</strong> This indicator has some suspicious signals but may be benign.
+                                        {% else %}
+                                            <strong>Clean:</strong> No significant threats detected.
+                                        {% endif %}
+                                    </p>
+                                </div>
+
+                                <h5 class="mt-4">Key Findings</h5>
+                                <ul>
+                                    {% if results.virustotal and results.virustotal.status == 'success' %}
+                                        <li>VirusTotal: {{ results.virustotal.malicious_votes }} out of {{ results.virustotal.total_votes }} engines detect as malicious</li>
+                                    {% endif %}
+                                    
+                                    {% if results.abuseipdb and results.abuseipdb.status == 'success' %}
+                                        <li>AbuseIPDB: Confidence score of {{ results.abuseipdb.abuse_score }}% with {{ results.abuseipdb.total_reports }} reports</li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Threat Score Breakdown</h5>
+                                        <canvas id="threatScoreChart" height="200"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- VirusTotal Tab -->
+                    {% if results.virustotal %}
+                    <div class="tab-pane fade" id="virustotal" role="tabpanel">
+                        {% if results.virustotal.status == 'success' %}
+                            <h4>VirusTotal Results</h4>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Detection Summary</h5>
+                                            <p>Detected by {{ results.virustotal.malicious_votes }} out of {{ results.virustotal.total_votes }} security vendors</p>
+                                            <div class="progress">
+                                                <div class="progress-bar bg-danger" role="progressbar" 
+                                                     style="width: {{ (results.virustotal.detection_ratio * 100) | round }}%" 
+                                                     aria-valuenow="{{ (results.virustotal.detection_ratio * 100) | round }}" 
+                                                     aria-valuemin="0" aria-valuemax="100">
+                                                    {{ (results.virustotal.detection_ratio * 100) | round }}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    {% if results.virustotal.last_analysis_date %}
+                                        <div class="card">
+                                            <div class="card-body">                                                <h5 class="card-title">Last Analysis</h5>
+                                                <p>{{ results.virustotal.last_analysis_date | datetime }}</p>
+                                                
+                                                {% if results.virustotal.malware_families %}
+                                                    <h6>Detected Malware Families</h6>
+                                                    <p>{{ results.virustotal.malware_families }}</p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            {% if results.virustotal.categories %}
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Categories</h5>
+                                            {% for category, provider in results.virustotal.categories.items() %}
+                                                <span class="badge bg-secondary me-2">{{ category }} ({{ provider }})</span>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                        {% else %}
+                            <div class="alert alert-warning">
+                                <h5>Error retrieving VirusTotal data</h5>
+                                <p>{{ results.virustotal.error }}</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    <!-- AbuseIPDB Tab -->
+                    {% if results.abuseipdb %}
+                    <div class="tab-pane fade" id="abuseipdb" role="tabpanel">
+                        {% if results.abuseipdb.status == 'success' %}
+                            <h4>AbuseIPDB Results</h4>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Abuse Confidence Score</h5>
+                                            <div class="display-4 text-center">{{ results.abuseipdb.abuse_score }}%</div>
+                                            <div class="progress mt-2">
+                                                <div class="progress-bar 
+                                                    {% if results.abuseipdb.abuse_score >= 80 %}bg-danger
+                                                    {% elif results.abuseipdb.abuse_score >= 50 %}bg-warning
+                                                    {% elif results.abuseipdb.abuse_score >= 20 %}bg-info
+                                                    {% else %}bg-success{% endif %}"
+                                                    role="progressbar" 
+                                                    style="width: {{ results.abuseipdb.abuse_score }}%" 
+                                                    aria-valuenow="{{ results.abuseipdb.abuse_score }}"
+                                                    aria-valuemin="0" aria-valuemax="100">
+                                                    {{ results.abuseipdb.abuse_score }}%
+                                                </div>
+                                            </div>
+                                            <p class="mt-2">Based on {{ results.abuseipdb.total_reports }} reports</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h5 class="card-title">IP Information</h5>
+                                            <table class="table table-sm">
+                                                <tbody>
+                                                    {% if results.abuseipdb.country_code %}
+                                                        <tr>
+                                                            <th scope="row">Country</th>
+                                                            <td>{{ results.abuseipdb.country_code }}</td>
+                                                        </tr>
+                                                    {% endif %}
+                                                    {% if results.abuseipdb.isp %}
+                                                        <tr>
+                                                            <th scope="row">ISP</th>
+                                                            <td>{{ results.abuseipdb.isp }}</td>
+                                                        </tr>
+                                                    {% endif %}
+                                                    {% if results.abuseipdb.usage_type %}
+                                                        <tr>
+                                                            <th scope="row">Usage Type</th>
+                                                            <td>{{ results.abuseipdb.usage_type }}</td>
+                                                        </tr>
+                                                    {% endif %}
+                                                    {% if results.abuseipdb.last_reported %}                                                        <tr>
+                                                            <th scope="row">Last Reported</th>
+                                                            <td>{{ results.abuseipdb.last_reported | datetime }}</td>
+                                                        </tr>
+                                                    {% endif %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if results.abuseipdb.categories %}
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Report Categories</h5>
+                                            {% for category in results.abuseipdb.categories %}
+                                                <span class="badge bg-secondary me-2">{{ category }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                        {% else %}
+                            <div class="alert alert-warning">
+                                <h5>Error retrieving AbuseIPDB data</h5>
+                                <p>{{ results.abuseipdb.error }}</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    <!-- History Tab -->
+                    <div class="tab-pane fade" id="history" role="tabpanel">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Historical data will be displayed here when available.
+                        </div>
+                        <!-- Historical data would be loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Related Threats -->
+<div class="row">
+    <div class="col">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold"><i class="fas fa-project-diagram"></i> Related Threats</h6>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Related threat data will be displayed here when available.
+                </div>
+                <!-- Related threats would be loaded dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if threat_score %}
+    // Render Threat Score Chart
+    new Chart(document.getElementById('threatScoreChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Threat Score', 'Safe'],
+            datasets: [{
+                data: [{{ threat_score }}, 100 - {{ threat_score }}],
+                backgroundColor: [
+                    {% if threat_score >= 75 %}'#dc3545'{% elif threat_score >= 50 %}'#ffc107'{% elif threat_score >= 25 %}'#17a2b8'{% else %}'#28a745'{% endif %},
+                    '#e9ecef'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            cutout: '75%',
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+    {% endif %}
+});
+</script>
+{% endif %}
+{% endblock %}

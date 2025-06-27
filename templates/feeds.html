@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}CTI Dashboard - Threat Feeds{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="display-6"><i class="fas fa-rss"></i> Threat Intelligence Feeds</h1>
+        <p class="lead">Monitor and analyze the latest threat intelligence sources</p>
+    </div>
+</div>
+
+<!-- Alert placeholder for notifications -->
+<div id="alert-placeholder"></div>
+
+<!-- Feeds Overview -->
+<div class="row mb-4">
+    <div class="col-lg-8">
+        <div class="card glass glow-border shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold neon-accent"><i class="fas fa-server"></i> Active Threat Feeds</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Feed Source</th>
+                                <th>Last Updated</th>
+                                <th>Indicators</th>
+                                <th>Description</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for source in feeds.sources %}
+                            <tr>
+                                <td><strong>{{ source.name }}</strong></td>
+                                <td>{{ source.last_updated }}</td>
+                                <td>{{ source.indicators_count }}</td>
+                                <td>{{ source.description }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary">View</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card glass glow-border shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold neon-accent"><i class="fas fa-tags"></i> Feed Categories</h6>
+            </div>
+            <div class="card-body">
+                {% for category in feeds.categories %}
+                <span class="badge bg-secondary me-2 mb-2 p-2">{{ category }}</span>
+                {% endfor %}
+                  <hr class="my-4">
+                
+                <h6 class="font-weight-bold mb-3">Feed Statistics</h6>
+                <div id="chart-container">
+                    <canvas id="feedCategoryChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Indicators -->
+<div class="row">
+    <div class="col">
+        <div class="card glass glow-border shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold neon-accent"><i class="fas fa-radar"></i> Recently Detected Indicators</h6>
+                <div>
+                    <button class="btn btn-sm btn-outline-light"><i class="fas fa-sync-alt"></i> Refresh</button>
+                </div>
+            </div>            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="recent-indicators-table">
+                        <thead>
+                            <tr>
+                                <th>Indicator</th>
+                                <th>Type</th>
+                                <th>Source</th>
+                                <th>Tags</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for indicator in feeds.recent_indicators %}
+                            <tr>
+                                <td><code>{{ indicator.value }}</code></td>
+                                <td>
+                                    {% if indicator.type == 'ip' %}
+                                    <span class="badge bg-danger">IP</span>
+                                    {% elif indicator.type == 'domain' %}
+                                    <span class="badge bg-warning">Domain</span>
+                                    {% elif indicator.type == 'url' %}
+                                    <span class="badge bg-info">URL</span>
+                                    {% elif indicator.type == 'hash' %}
+                                    <span class="badge bg-success">Hash</span>
+                                    {% endif %}
+                                </td>
+                <td>{{ indicator.source }}</td>
+                                <td>
+                                    {% for tag in indicator.tags %}
+                                    <span class="badge bg-secondary me-1">{{ tag }}</span>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    <a href="/lookup?indicator={{ indicator.value }}" class="btn btn-sm btn-primary">Analyze</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/feeds.js') }}"></script>
+{% endblock %}
